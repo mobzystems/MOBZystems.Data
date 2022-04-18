@@ -1,14 +1,14 @@
 ﻿using MOBZystems.Data;
 using MySql.Data.MySqlClient;
 
-// See https://aka.ms/new-console-template for more information
-var connectionString = System.Environment.GetEnvironmentVariable("MYSQLCONNSTR_localdb");
+var connectionString = Environment.GetEnvironmentVariable("MYSQLCONNSTR_localdb");
 Console.WriteLine($"Connection string: {connectionString}");
 using (var connection = new MySqlConnection(connectionString))
 {
-  // connection.Open();
+  // connection.Open(); -- no need to do this, the DataConnection will do it
 
-  using (var dataConnection = new DataConnection(connection)) {
+  using (var dataConnection = new DataConnection(connection))
+  {
     Console.WriteLine($"Connection open.");
 
     // Test if database exists
@@ -29,12 +29,13 @@ ENGINE = InnoDB
       Console.WriteLine("Inserting rows...");
       await dataConnection.ExecuteNonQueryAsync("INSERT INTO `testdb1`.`item` (`itemid`, `name`) VALUES (1, 'markus'), (2, 'tobias');");
       Console.WriteLine("Database created.");
-    } else
+    }
+    else
     {
       Console.WriteLine("Database exists.");
     }
 
-    var result = await dataConnection.SelectAsync("select * from item");
+    var result = await dataConnection.SelectAsync("select * from item where itemid > @minitemid order by itemid", ("minitemid", -1));
     foreach (var row in result)
     {
       Console.WriteLine($"{row["itemid"]}: {row["name"]}");

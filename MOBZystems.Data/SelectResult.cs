@@ -6,21 +6,24 @@ using System.Collections;
 
 namespace MOBZystems.Data
 {
-    /// <summary>
-    /// The result of a SelectCommand
-    /// 
-    /// Also an IEnumerable of ResultRow
-    /// </summary>
-    public class SelectResult: IEnumerable<SelectResult.ResultRow>
+  /// <summary>
+  /// The result of <see cref="SelectCommand.ResultAsync"/> or <see cref="DataConnection.SelectAsync(string, (string name, object value)[])"/>
+  /// 
+  /// Also an IEnumerable of <see cref="ResultRow"/>
+  /// </summary>
+  public class SelectResult: IEnumerable<SelectResult.ResultRow>
   {
     /// <summary>
     /// Information about a result column
     /// </summary>
     public class ResultColumn
     {
-      public int Index { get; }
-      public string Name { get; }
-      public Type DataType { get; }
+      // The index of this column in the SelectResult
+      public readonly int Index;
+      // The name of this column
+      public readonly string Name;
+      // The type of this column
+      public readonly Type DataType;
 
       internal ResultColumn(int index, string name, Type dataType)
       {
@@ -40,67 +43,49 @@ namespace MOBZystems.Data
       // The data in this row as object, in column order
       protected object[] _data;
 
-      public object[] Values
-      {
-        get
-        {
-          return _data;
-        }
-      }
+      public object[] Values => _data;
 
+      // Private default constructor to prevent creation by outsiders
       private ResultRow() { }
 
+      /// <summary>
+      /// Internal constructor fo use by SelectCommand
+      /// </summary>
+      /// <param name="selectResult">The <see cref="SelectResult"/> this row is a part of</param>
+      /// <param name="reader">The <see cref="DbDataReader"/> to read data from</param>
       internal ResultRow(SelectResult selectResult, DbDataReader reader)
       {
+        // Store the parent
         _selectResult = selectResult;
+        // Allocate and read the data
         _data = new object[reader.FieldCount];
         reader.GetValues(_data);
-        // Get rid of DBNull-values:
+
+        // Get rid of DBNull-values, replacing them with null:
         for (int i = 0; i < _data.Length; i++)
-        {
           if (_data[i] is DBNull)
-          {
             _data[i] = null;
-          }
-        }
       }
 
       /// <summary>
-      /// Get the value with the specified column name
+      /// Get the value with the specified column name as an object
       /// </summary>
-      /// <param name="columnName"></param>
-      /// <returns>An object</returns>
-      public object this[string columnName]
-      {
-        get
-        {
-          return _data[_selectResult.Column(columnName).Index];
-        }
-      }
+      public object this[string columnName] => _data[_selectResult.Column(columnName).Index];
 
-      public object this[int index]
-      {
-        get
-        {
-          return _data[index];
-        }
-      }
+      /// <summary>
+      /// Get the value of the column with the specified column index as an object
+      /// </summary>
+      public object this[int index] => _data[index];
 
       /// <summary>
       /// Get the value with the specified column name, cast to the specified type
       /// </summary>
-      /// <typeparam name="T"></typeparam>
-      /// <param name="columnName"></param>
-      /// <returns>The value, converted to T</returns>
-      public T Value<T>(string columnName)
-      {
-        return (T)this[columnName];
-      }
+      public T Value<T>(string columnName) => (T)this[columnName];
 
-      public T Value<T>(int index)
-      {
-        return (T)this[index];
-      }
+      /// <summary>
+      /// Get the value of the column with the specified column index, cast to the specified type
+      /// </summary>
+      public T Value<T>(int index) => (T)this[index];
 
       /// <summary>
       /// Get the value of the specified column, formatted according to the specified format
@@ -112,31 +97,31 @@ namespace MOBZystems.Data
       public string Value<T>(string columnName, string format)
       {
         if (format == null)
-        {
           throw new ArgumentNullException(nameof(format));
-        }
-        T value = (T)_data[_selectResult.Column(columnName).Index];
+
+        T value = Value<T>(columnName);
         return string.Format($"{{0:{format}}}", value);
       }
     }
 
+    // The simple list of column names
+    protected string[] _columnNames = null;
+    public string[] ColumnNames => _columnNames;
+
     /// <summary>
-    /// Mapping from (case insensitive) column name to column index
+    /// Mapping from (case insensitive) column name to <see cref="ResultColumn"/>
     /// </summary>
     protected Dictionary<string, ResultColumn> _columns = new Dictionary<string, ResultColumn>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// The row data in this SelectResult
     /// </summary>
     protected List<ResultRow> _rows = new List<ResultRow>();
 
-    protected string[] _columnNames = null;
-
     /// <summary>
     /// Internal constructor, only used by SelectCommand before calling ReadSync()
     /// </summary>
-    internal SelectResult()
-    {
-    }
+    internal SelectResult() {}
 
     /// <summary>
     /// Read from a data reader
@@ -147,6 +132,7 @@ namespace MOBZystems.Data
       _columnNames = new string[reader.FieldCount];
 
       // The list of column names and types is available before reading
+      // from the data reader
       for (int i = 0; i < reader.FieldCount; i++)
       {
         var name = reader.GetName(i);
@@ -159,40 +145,26 @@ namespace MOBZystems.Data
 
       // Now iterate the rows of the result
       while (await reader.ReadAsync())
-      {
         _rows.Add(new ResultRow(this, reader));
-      }
     }
 
+    /// <summary>
+    /// Get the <see cref="ResultColumn"/> from the column name.
+    /// </summary>
+    /// <exception cref="KeyNotFoundException">If the column name is nor part of the <see cref="ResultColumn"/></exception>
     public ResultColumn Column(string columnName)
     {
-      ResultColumn columnInfo;
-      if (_columns.TryGetValue(columnName, out columnInfo))
-      {
+      if (_columns.TryGetValue(columnName, out ResultColumn columnInfo))
         return columnInfo;
-      }
 
       throw new KeyNotFoundException($"{this.GetType().Name} does not contain column '{columnName}'");
     }
 
-    public string[] ColumnNames
-    {
-      get
-      {
-        return _columnNames;
-      }
-    }
-
     #region IEnumerable
-    public IEnumerator<ResultRow> GetEnumerator()
-    {
-      return ((IEnumerable<ResultRow>)_rows).GetEnumerator();
-    }
+    // Type safe enumerators
+    public IEnumerator<ResultRow> GetEnumerator() => ((IEnumerable<ResultRow>)_rows).GetEnumerator();
 
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-      return ((IEnumerable<ResultRow>)_rows).GetEnumerator();
-    }
+    IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable<ResultRow>)_rows).GetEnumerator();
     #endregion
   }
 }

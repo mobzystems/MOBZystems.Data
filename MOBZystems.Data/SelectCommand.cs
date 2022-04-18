@@ -7,6 +7,8 @@ namespace MOBZystems.Data
 {
   /// <summary>
   /// A generic wrapper around a DbCommand with easier syntax for parameters
+  /// 
+  /// Supports ExecuteNonQuery()
   ///
   /// Usage:
   /// 
@@ -21,88 +23,40 @@ namespace MOBZystems.Data
   /// </summary>
   public class DataCommand : IDisposable
   {
-    ///// <summary>
-    ///// Holds a parameter and associated value
-    ///// </summary>
-    //public class Parameter
-    //{
-    //  public string Name;
-    //  public object Value;
-    //}
-
     protected DbCommand _command = null;
 
     /// <summary>
     /// Constructor without parameters. Use AddParameters() to add parameters later
     /// </summary>
-    /// <param name="connection"></param>
-    /// <param name="commandText"></param>
-    /// <param name="commandType"></param>
+    /// <param name="connection">The connection to create the command for</param>
+    /// <param name="commandText">The SQL text of the cmmand</param>
+    /// <param name="commandType">The type of command</param>
     public DataCommand(string commandText, DbConnection connection, CommandType commandType = CommandType.Text)
     {
+      if (connection == null)
+        throw new ArgumentNullException(nameof(connection));
+
       _command = connection.CreateCommand();
       _command.CommandText = commandText;
       _command.CommandType = commandType;
     }
 
-    ///// <summary>
-    ///// Add the specified parameters
-    ///// </summary>
-    ///// <param name="parameters"></param>
-    //protected void AddParameters(params Parameter[] parameters)
-    //{
-    //  foreach (var p in parameters)
-    //  {
-    //    var param = _command.CreateParameter();
-    //    param.ParameterName = p.Name;
-    //    param.Value = p.Value;
-    //    _command.Parameters.Add(param);
-    //  }
-    //}
-
-    ///// <summary>
-    ///// Create a new SelectCommand with the specified command type and parameters
-    ///// </summary>
-    ///// <param name="connection"></param>
-    ///// <param name="commandText"></param>
-    ///// <param name="commandType"></param>
-    ///// <param name="parameters"></param>
-    //public SelectCommand(string commandText, DbConnection connection, CommandType commandType, params Parameter[] parameters) : this(commandText, connection, commandType)
-    //{
-    //  AddParameters(parameters);
-    //}
-
-    ///// <summary>
-    ///// Create a new SelectCommand with the specified parameters
-    ///// </summary>
-    ///// <param name="connection"></param>
-    ///// <param name="commandText"></param>
-    ///// <param name="parameters"></param>
-    //public SelectCommand(string commandText, DbConnection connection, params Parameter[] parameters) : this(commandText, connection, CommandType.Text, parameters)
-    //{
-    //}
-
     /// <summary>
-    /// Add parameters, each specified as a name/value pair:
+    /// Add parameters, each specified as a tuple of name/value:
     /// 
-    /// name1, value1, name2, value2, ...
+    /// (name1, value1), (name2, value2), ...
     /// </summary>
     /// <param name="parameters"></param>
-    public void AddParameters(params object[] parameters)
+    public void AddParameters(params (string name, object value)[] parameters)
     {
-      if ((parameters.Length % 2) != 0)
+      foreach (var p in parameters)
       {
-        throw new ArgumentException($"{nameof(parameters)} must contain (name, value) pairs and cannot have odd length");
-      }
+        if (p.name == null)
+          throw new ArgumentNullException(nameof(p), "Name of parameter cannot be null");
 
-      for (int i = 0; i < parameters.Length; i += 2)
-      {
-        var name = parameters[i] as string;
-        if (name == null)
-          throw new ArgumentException($"{nameof(parameters)}[{i}] must have type string");
         var param = _command.CreateParameter();
-        param.ParameterName = name;
-        param.Value = parameters[i + 1];
+        param.ParameterName = p.name;
+        param.Value = p.value;
         _command.Parameters.Add(param);
       }
     }
@@ -110,11 +64,8 @@ namespace MOBZystems.Data
     /// <summary>
     /// Create a new SelectCommand with the specified command type and parameters
     /// </summary>
-    /// <param name="connection"></param>
-    /// <param name="commandText"></param>
-    /// <param name="commandType"></param>
-    /// <param name="parameters"></param>
-    public DataCommand(string commandText, DbConnection connection, CommandType commandType, params object[] parameters) : this(commandText, connection, commandType)
+    public DataCommand(string commandText, DbConnection connection, CommandType commandType, params (string name, object value)[] parameters) : 
+      this(commandText, connection, commandType)
     {
       AddParameters(parameters);
     }
@@ -122,17 +73,13 @@ namespace MOBZystems.Data
     /// <summary>
     /// Create a new SelectCommand with the specified parameters
     /// </summary>
-    /// <param name="connection"></param>
-    /// <param name="commandText"></param>
-    /// <param name="parameters"></param>
-    public DataCommand(string commandText, DbConnection connection, params object[] parameters) : this(commandText, connection, CommandType.Text, parameters)
-    {
-    }
+    public DataCommand(string commandText, DbConnection connection, params (string name, object value)[] parameters) : 
+      this(commandText, connection, CommandType.Text, parameters) {}
 
-    public async Task<int> ExecuteNonQueryAsync()
-    {
-      return await _command.ExecuteNonQueryAsync();
-    }
+    /// <summary>
+    /// Execute the command and return the number of rows affected
+    /// </summary>
+    public async Task<int> ExecuteNonQueryAsync() => await _command.ExecuteNonQueryAsync();
 
     #region IDisposable Support
     private bool _disposed = false; // To detect redundant calls
@@ -164,42 +111,35 @@ namespace MOBZystems.Data
   /// <summary>
   /// A generic wrapper around a DbCommand specific for select queries
   /// 
-  /// Use SelectAsync to get a SelectResult
+  /// Supports ExecuteScalar(), but not ExecuteReader. For that, use <see cref="ResultAsync"/> to get a <see cref="SelectResult"/>
   /// </summary>
   public class SelectCommand: DataCommand
   {
     public SelectCommand(string commandText, DbConnection connection, CommandType commandType = CommandType.Text) :
-      base(commandText, connection, commandType)
-    {
-    }
+      base(commandText, connection, commandType) {}
 
-    public SelectCommand(string commandText, DbConnection connection, CommandType commandType, params object[] parameters) : 
-      base(commandText, connection, commandType, parameters)
-    {
-    }
+    public SelectCommand(string commandText, DbConnection connection, CommandType commandType, params (string name, object value)[] parameters) : 
+      base(commandText, connection, commandType, parameters) {}
 
-    public SelectCommand(string commandText, DbConnection connection, params object[] parameters) :
-      this(commandText, connection, CommandType.Text, parameters)
-    {
-    }
+    public SelectCommand(string commandText, DbConnection connection, params (string name, object value)[] parameters) :
+      this(commandText, connection, CommandType.Text, parameters) {}
 
     /// <summary>
     /// Read all rows returned by the this command
     /// </summary>
     /// <returns>A SelectResult object, containing column information and row data</returns>
+    /// <remarks>It's probably more convenient to use <see cref="DataConnection.SelectAsync(string, CommandType, (string name, object value)[])" /></remarks>
     public async Task<SelectResult> ResultAsync()
     {
       var result = new SelectResult();
       using (var reader = await _command.ExecuteReaderAsync())
-      {
         await result.ReadAsync(reader);
-      }
       return result;
     }
 
-    public async Task<T> ExecuteScalarAsync<T>()
-    {
-      return (T)await _command.ExecuteScalarAsync();
-    }
+    /// <summary>
+    /// Execute the select command and return a scalar ot type T
+    /// </summary>
+    public async Task<T> ExecuteScalarAsync<T>() => (T)await _command.ExecuteScalarAsync();
   }
 }
