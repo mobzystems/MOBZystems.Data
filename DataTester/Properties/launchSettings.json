@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "DataTester": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "MYSQLCONNSTR_localdb": "Server=127.0.0.1;Database=testdb1;Uid=root;Pwd=laurier46;"
+      }
+    }
+  }
+}
