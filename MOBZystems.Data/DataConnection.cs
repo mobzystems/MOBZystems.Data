@@ -22,8 +22,6 @@ namespace MOBZystems.Data
   ///   var result = await dc.SelectAsync("select * from ...")
   /// }
   /// 
-  /// TODO: let the constructor decide on the state of the connection
-  /// 
   /// Most of the heavy lifting is done by <see cref="SelectCommand"/>.
   /// </summary>
   /// <remarks>The connection provided can be open on construction, but it is always closed when disposing!</remarks>
