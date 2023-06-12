@@ -8,7 +8,7 @@
     <Authors>www.mobzystems.com</Authors>
     <Company>MOBZystems BV, Amsterdam</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <VersionPrefix>0.8.0</VersionPrefix>
+    <VersionPrefix>0.8.1</VersionPrefix>
   </PropertyGroup>
 
 </Project>

@@ -42,6 +42,11 @@ namespace MOBZystems.Data
     }
 
     /// <summary>
+    /// Get the underlying command. Useful for adding timeouts etc.
+    /// </summary>
+    public DbCommand Command => _command;
+
+    /// <summary>
     /// Add parameters, each specified as a tuple of name/value:
     /// 
     /// (name1, value1), (name2, value2), ...
@@ -62,16 +67,25 @@ namespace MOBZystems.Data
     }
 
     /// <summary>
-    /// Create a new SelectCommand with the specified command type and parameters
+    /// Create a new DataCommand with the specified command type and parameters
     /// </summary>
     public DataCommand(string commandText, DbConnection connection, CommandType commandType, params (string name, object value)[] parameters) : 
       this(commandText, connection, commandType)
     {
       AddParameters(parameters);
     }
+    
+    /// <summary>
+    /// Create a new DataCommand with the specified command type, timeout and parameters
+    /// </summary>
+    public DataCommand(string commandText, DbConnection connection, CommandType commandType, int timeout, params (string name, object value)[] parameters) : 
+      this(commandText, connection, commandType, parameters)
+    {
+      _command.CommandTimeout = timeout;
+    }
 
     /// <summary>
-    /// Create a new SelectCommand with the specified parameters
+    /// Create a new DataCommand with the specified parameters
     /// </summary>
     public DataCommand(string commandText, DbConnection connection, params (string name, object value)[] parameters) : 
       this(commandText, connection, CommandType.Text, parameters) {}
@@ -118,11 +132,14 @@ namespace MOBZystems.Data
     public SelectCommand(string commandText, DbConnection connection, CommandType commandType = CommandType.Text) :
       base(commandText, connection, commandType) {}
 
+    public SelectCommand(string commandText, DbConnection connection, params (string name, object value)[] parameters) :
+      this(commandText, connection, CommandType.Text, parameters) {}
+
     public SelectCommand(string commandText, DbConnection connection, CommandType commandType, params (string name, object value)[] parameters) : 
       base(commandText, connection, commandType, parameters) {}
 
-    public SelectCommand(string commandText, DbConnection connection, params (string name, object value)[] parameters) :
-      this(commandText, connection, CommandType.Text, parameters) {}
+    public SelectCommand(string commandText, DbConnection connection, CommandType commandType, int timeout, params (string name, object value)[] parameters) :
+      base(commandText, connection, commandType, timeout, parameters) {}
 
     /// <summary>
     /// Read all rows returned by the this command
