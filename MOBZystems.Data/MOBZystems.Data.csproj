@@ -4,6 +4,11 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Authors>www.mobzystems.com</Authors>
+    <Company>MOBZystems BV, Amsterdam</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <VersionPrefix>0.8.0</VersionPrefix>
   </PropertyGroup>
 
 </Project>
